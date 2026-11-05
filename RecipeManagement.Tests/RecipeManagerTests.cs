@@ -3,11 +3,105 @@ using RecipeManagement.Core;
 
 namespace RecipeManagement.Tests;
 
-/// <summary>
-/// Example tests from the assignment specification. Add your own tests as you work.
-/// </summary>
 public sealed class RecipeManagerTests
 {
+    [Fact]
+    public void Constructor_RejectsNullCollection()
+    {
+        Assert.Throws<ArgumentNullException>(() => new RecipeManager(null!));
+    }
+
+    [Fact]
+    public void Constructor_AcceptsEmptyCatalogue()
+    {
+        IRecipeManager manager = new RecipeManager(Array.Empty<Recipe>());
+
+        Assert.Equal(0, manager.RecipeCount);
+        Assert.Equal(0, manager.ShoppingItemCount);
+        Assert.Equal(0, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+        Assert.Equal(0, manager.PendingInstructionCount);
+    }
+
+    [Theory]
+    [InlineData(0, "Recipe")]
+    [InlineData(-1, "Recipe")]
+    [InlineData(1, "")]
+    [InlineData(1, " ")]
+    [InlineData(1, null)]
+    public void Constructor_RejectsInvalidRecipe(int recipeId, string? title)
+    {
+        var recipes = new[] { new Recipe { Id = recipeId, Title = title! } };
+
+        Assert.Throws<ArgumentException>(() => new RecipeManager(recipes));
+    }
+
+    [Fact]
+    public void Constructor_RejectsDuplicateIds()
+    {
+        var recipes = new[]
+        {
+            new Recipe { Id = 10, Title = "First recipe" },
+            new Recipe { Id = 10, Title = "Duplicate recipe" }
+        };
+
+        Assert.Throws<ArgumentException>(() => new RecipeManager(recipes));
+    }
+
+    [Fact]
+    public void AddRecipe_RejectsNull()
+    {
+        var manager = CreateManager();
+
+        Assert.Throws<ArgumentNullException>(() => manager.AddRecipe(null!));
+        Assert.Equal(2, manager.RecipeCount);
+    }
+
+    [Theory]
+    [InlineData(0, "Recipe")]
+    [InlineData(-1, "Recipe")]
+    [InlineData(30, "")]
+    [InlineData(30, " ")]
+    [InlineData(30, null)]
+    public void AddRecipe_RejectsInvalidRecipe(int recipeId, string? title)
+    {
+        var manager = CreateManager();
+
+        Assert.False(manager.AddRecipe(new Recipe { Id = recipeId, Title = title! }));
+        Assert.Equal(2, manager.RecipeCount);
+    }
+
+    [Fact]
+    public void AddRecipe_StoresRecipeAndRejectsDuplicateWithoutReplacingIt()
+    {
+        var manager = CreateManager();
+        var recipe = new Recipe { Id = 30, Title = "New recipe" };
+
+        Assert.True(manager.AddRecipe(recipe));
+        Assert.Same(recipe, manager.FindRecipe(30));
+        Assert.False(manager.AddRecipe(new Recipe { Id = 30, Title = "Replacement" }));
+        Assert.Same(recipe, manager.FindRecipe(30));
+        Assert.Equal(3, manager.RecipeCount);
+    }
+
+    [Fact]
+    public void FindRecipe_ReturnsNullForMissingId()
+    {
+        Assert.Null(CreateManager().FindRecipe(999));
+    }
+
+    [Fact]
+    public void RemoveRecipe_RemovesExistingRecipeAndHandlesMissingIds()
+    {
+        var manager = CreateManager();
+
+        Assert.True(manager.RemoveRecipe(10));
+        Assert.Null(manager.FindRecipe(10));
+        Assert.False(manager.RemoveRecipe(10));
+        Assert.False(manager.RemoveRecipe(999));
+        Assert.Equal(1, manager.RecipeCount);
+    }
+
     [Fact]
     public void Constructor_BuildsRecipeDictionary()
     {

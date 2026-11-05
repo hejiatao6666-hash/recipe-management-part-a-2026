@@ -3,35 +3,50 @@ using System.Collections.Generic;
 
 namespace RecipeManagement.Core;
 
-/// <summary>
-/// Implement this class using the five Part A collections as private fields:
-/// Dictionary&lt;int, Recipe&gt;, List&lt;string&gt;, LinkedList&lt;int&gt;,
-/// Stack&lt;int&gt; and Queue&lt;string&gt;.
-/// </summary>
 public sealed class RecipeManager : IRecipeManager
 {
-    // TODO Part A: add your private collection fields here.
+    private readonly Dictionary<int, Recipe> _recipes = new();
+    private readonly List<string> _shoppingList = new();
+    private readonly LinkedList<int> _cookingPlan = new();
+    private readonly Stack<int> _removedRecipes = new();
+    private readonly Queue<string> _instructions = new();
 
     public RecipeManager(IEnumerable<Recipe> recipes)
     {
-        // TODO Part A: validate recipes and build Dictionary<int, Recipe>.
-        _ = recipes;
+        ArgumentNullException.ThrowIfNull(recipes);
+
+        foreach (Recipe recipe in recipes)
+        {
+            if (recipe is null || !AddRecipe(recipe))
+            {
+                throw new ArgumentException("食谱必须具有唯一的正数 ID 和非空标题。", nameof(recipes));
+            }
+        }
     }
 
-    public int RecipeCount => 0;
-    public int ShoppingItemCount => 0;
-    public int CookingPlanCount => 0;
-    public int PendingInstructionCount => 0;
-    public int RemovedRecipeCount => 0;
+    public int RecipeCount => _recipes.Count;
+    public int ShoppingItemCount => _shoppingList.Count;
+    public int CookingPlanCount => _cookingPlan.Count;
+    public int PendingInstructionCount => _instructions.Count;
+    public int RemovedRecipeCount => _removedRecipes.Count;
 
-    public bool AddRecipe(Recipe recipe) =>
-        throw new NotImplementedException("Part A: implement AddRecipe.");
+    public bool AddRecipe(Recipe recipe)
+    {
+        ArgumentNullException.ThrowIfNull(recipe);
+
+        if (recipe.Id <= 0 || string.IsNullOrWhiteSpace(recipe.Title))
+        {
+            return false;
+        }
+
+        return _recipes.TryAdd(recipe.Id, recipe);
+    }
 
     public Recipe? FindRecipe(int recipeId) =>
-        throw new NotImplementedException("Part A: implement FindRecipe.");
+        _recipes.TryGetValue(recipeId, out Recipe? recipe) ? recipe : null;
 
     public bool RemoveRecipe(int recipeId) =>
-        throw new NotImplementedException("Part A: implement RemoveRecipe.");
+        !_cookingPlan.Contains(recipeId) && _recipes.Remove(recipeId);
 
     public int AddIngredientsToShoppingList(int recipeId) =>
         throw new NotImplementedException("Part A: implement AddIngredientsToShoppingList.");
