@@ -19,3 +19,4 @@ In a short paragraph, explain how the new Part B features use the existing Part 
 | Complete next instruction | Queue | O(1) | The item at the front is removed. |
 | LINQ title/ingredient search | Recipe collection | O(n) | Each recipe may need to be inspected. |
 | Check whether a recipe is saved | Your chosen collection | | Explain how your collection performs membership checks. |
+
