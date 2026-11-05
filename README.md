@@ -1,6 +1,6 @@
 # 食谱管理系统：Part A
 
-基于课程提供的三项目起始代码开发，目标框架为 .NET 10，测试框架为 xUnit。
+目标框架为 .NET 10，测试框架为 xUnit。
 
 ## 当前进度
 
@@ -23,15 +23,15 @@
 | 2026-11-07 | 烹饪计划、移除历史及链表与栈测试 |
 | 2026-11-08 | 指令队列、组件交互测试、全量验证与提交打包 |
 
-后续日期是计划。Git 提交与远程同步只记录实际完成的工作。
+
 
 ## 项目结构
 
-- `RecipeManagement.Application`：老师提供的控制台菜单，引用 Core。
-- `RecipeManagement.Core`：老师提供的模型、加载器、接口以及待完成的 `RecipeManager`。
+- `RecipeManagement.Application`：引用 Core。
+- `RecipeManagement.Core`：模型、加载器、接口以及待完成的 `RecipeManager`。
 - `RecipeManagement.Tests`：引用 Core 的 xUnit 测试。
-- `data/recipes.json`：老师提供的食谱数据。
-- `Design.md`：老师提供的 Part B 模板。
+- `data/recipes.json`：食谱数据。
+- `Design.md`： Part B 模板。
 
 ## 编译、测试与运行
 
@@ -49,7 +49,7 @@ dotnet run --project RecipeManagement.Application -- data/recipes.json
 dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder&FullyQualifiedName!~RemovedRecipesAreRestoredLastInFirstOut"
 ```
 
-完整的 `dotnet test` 当前还会运行两个未完成阶段的示例测试，不能将目录阶段通过等同于整份作业完成。
+
 
 若 Windows 的默认 `dotnet` 提示没有 SDK，而 SDK 安装在用户目录，可使用：
 
@@ -59,6 +59,3 @@ dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder&Fu
 
 `bin`、`obj`、测试结果和 IDE 临时文件不纳入 Git。
 
-## AI 使用说明
-
-本项目在用户确认授课教师允许使用 AI 的前提下，由 OpenAI Codex 协助解释要求、实现食谱目录、编写相关测试及排查开发环境问题。此处如实记录 AI 协助范围，不声明这些内容完全由学生独立编写。
