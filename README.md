@@ -2,6 +2,8 @@
 
 目标框架为 .NET 10，测试框架为 xUnit。
 
+仓库地址：https://github.com/hejiatao6666-hash/recipe-management-part-a-2026
+
 ## 当前进度
 
 2026 年 11 月 5 日完成食谱目录：
@@ -12,7 +14,16 @@
 - 为五个指定集合建立私有字段，并提供对应的数量属性。
 - 目录阶段的 18 项测试通过。
 
-购物清单、烹饪计划、移除历史和指令队列的方法暂保留起始占位实现。原有的队列和历史示例测试将在相应功能完成后通过。
+2026 年 11 月 6 日完成购物清单：
+
+- 使用 `List<string>` 按原始顺序追加配料，保留字符串原文和重复项。
+- 缺失食谱返回 0，没有配料的食谱不改变清单。
+- 返回只读视图，避免调用方修改内部列表。
+- 清空购物清单并更新数量，不改变食谱原有配料。
+- 新增 9 项购物清单测试，目录与购物清单阶段共 27 项测试通过。
+- 修复解决方案文件顶部多余空行导致的编译错误。
+
+烹饪计划、移除历史和指令队列的方法暂保留起始占位实现。原有的队列和历史示例测试将在相应功能完成后通过。
 
 ## 实际开发安排
 
@@ -43,7 +54,7 @@ dotnet test
 dotnet run --project RecipeManagement.Application -- data/recipes.json
 ```
 
-当前仅验证目录阶段：
+当前仅验证目录与购物清单阶段：
 
 ```powershell
 dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder&FullyQualifiedName!~RemovedRecipesAreRestoredLastInFirstOut"

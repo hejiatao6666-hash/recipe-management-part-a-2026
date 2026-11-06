@@ -48,14 +48,22 @@ public sealed class RecipeManager : IRecipeManager
     public bool RemoveRecipe(int recipeId) =>
         !_cookingPlan.Contains(recipeId) && _recipes.Remove(recipeId);
 
-    public int AddIngredientsToShoppingList(int recipeId) =>
-        throw new NotImplementedException("Part A: implement AddIngredientsToShoppingList.");
+    public int AddIngredientsToShoppingList(int recipeId)
+    {
+        if (!_recipes.TryGetValue(recipeId, out Recipe? recipe))
+        {
+            return 0;
+        }
+
+        _shoppingList.AddRange(recipe.Ingredients);
+        return recipe.Ingredients.Count;
+    }
 
     public IReadOnlyList<string> GetShoppingList() =>
-        throw new NotImplementedException("Part A: implement GetShoppingList.");
+        _shoppingList.AsReadOnly();
 
     public void ClearShoppingList() =>
-        throw new NotImplementedException("Part A: implement ClearShoppingList.");
+        _shoppingList.Clear();
 
     public bool AddRecipeToCookingPlan(int recipeId) =>
         throw new NotImplementedException("Part A: implement AddRecipeToCookingPlan.");

@@ -111,6 +111,129 @@ public sealed class RecipeManagerTests
     }
 
     [Fact]
+    public void GetShoppingList_IsInitiallyEmpty()
+    {
+        var manager = CreateManager();
+
+        Assert.Empty(manager.GetShoppingList());
+        Assert.Equal(0, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void AddIngredientsToShoppingList_PreservesOriginalStringsAndOrder()
+    {
+        var recipe = new Recipe
+        {
+            Id = 30,
+            Title = "Shopping recipe",
+            Ingredients = new() { " 1 apple ", "2 tbsp sugar", "1 apple" }
+        };
+        IRecipeManager manager = new RecipeManager(new[] { recipe });
+
+        Assert.Equal(3, manager.AddIngredientsToShoppingList(30));
+        Assert.Equal(new[] { " 1 apple ", "2 tbsp sugar", "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(3, manager.ShoppingItemCount);
+        Assert.Equal(new[] { " 1 apple ", "2 tbsp sugar", "1 apple" }, recipe.Ingredients);
+    }
+
+    [Fact]
+    public void AddIngredientsToShoppingList_AppendsRecipesAndKeepsRepeatedIngredients()
+    {
+        var manager = CreateManager();
+        manager.AddRecipe(new Recipe
+        {
+            Id = 30,
+            Title = "Another recipe",
+            Ingredients = new() { "2 eggs", "1 apple" }
+        });
+
+        Assert.Equal(1, manager.AddIngredientsToShoppingList(10));
+        Assert.Equal(2, manager.AddIngredientsToShoppingList(30));
+        Assert.Equal(1, manager.AddIngredientsToShoppingList(10));
+        Assert.Equal(new[] { "1 apple", "2 eggs", "1 apple", "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(4, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void AddIngredientsToShoppingList_MissingRecipeDoesNotChangeExistingItems()
+    {
+        var manager = CreateManager();
+        manager.AddIngredientsToShoppingList(10);
+
+        Assert.Equal(0, manager.AddIngredientsToShoppingList(999));
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(1, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void AddIngredientsToShoppingList_RecipeWithoutIngredientsAddsNothing()
+    {
+        var manager = CreateManager();
+        manager.AddIngredientsToShoppingList(10);
+
+        Assert.Equal(0, manager.AddIngredientsToShoppingList(20));
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(1, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void AddIngredientsToShoppingList_CopiesStringsIndependentlyOfRecipeList()
+    {
+        var manager = CreateManager();
+        manager.AddIngredientsToShoppingList(10);
+
+        manager.FindRecipe(10)!.Ingredients[0] = "changed ingredient";
+
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+        Assert.True(manager.RemoveRecipe(10));
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+    }
+
+    [Fact]
+    public void GetShoppingList_PreventsMutationOfInternalList()
+    {
+        var manager = CreateManager();
+        manager.AddIngredientsToShoppingList(10);
+        var returnedItems = Assert.IsAssignableFrom<IList<string>>(manager.GetShoppingList());
+
+        Assert.True(returnedItems.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => returnedItems[0] = "changed ingredient");
+        Assert.Throws<NotSupportedException>(() => returnedItems.Add("extra ingredient"));
+        Assert.Throws<NotSupportedException>(() => returnedItems.Clear());
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(1, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void ClearShoppingList_RemovesAllItemsWithoutChangingRecipeIngredients()
+    {
+        var manager = CreateManager();
+        manager.AddIngredientsToShoppingList(10);
+        manager.AddIngredientsToShoppingList(10);
+
+        manager.ClearShoppingList();
+
+        Assert.Empty(manager.GetShoppingList());
+        Assert.Equal(0, manager.ShoppingItemCount);
+        Assert.Equal(new[] { "1 apple" }, manager.FindRecipe(10)!.Ingredients);
+        Assert.Equal(1, manager.AddIngredientsToShoppingList(10));
+        Assert.Equal(new[] { "1 apple" }, manager.GetShoppingList());
+        Assert.Equal(1, manager.ShoppingItemCount);
+    }
+
+    [Fact]
+    public void ClearShoppingList_HandlesAnAlreadyEmptyList()
+    {
+        var manager = CreateManager();
+
+        manager.ClearShoppingList();
+        manager.ClearShoppingList();
+
+        Assert.Empty(manager.GetShoppingList());
+        Assert.Equal(0, manager.ShoppingItemCount);
+    }
+
+    [Fact]
     public void InstructionsAreCompletedInFileOrder()
     {
         var manager = CreateManager();
