@@ -23,7 +23,16 @@
 - 新增 9 项购物清单测试，目录与购物清单阶段共 27 项测试通过。
 - 修复解决方案文件顶部多余空行导致的编译错误。
 
-烹饪计划、移除历史和指令队列的方法暂保留起始占位实现。原有的队列和历史示例测试将在相应功能完成后通过。
+2026 年 11 月 7 日完成烹饪计划与移除历史：
+
+- 使用 `LinkedList<int>` 按添加顺序保存计划，拒绝不存在和重复的食谱。
+- 按 ID 移除计划中的食谱，仅成功移除时将 ID 压入 `Stack<int>`。
+- 查看最近移除的 ID 不改变历史，恢复时将栈顶 ID 弹出并追加到计划末尾。
+- 安全处理空栈；已删除或已重新加入计划的食谱无法恢复，但仍消耗这一条历史记录。
+- 返回计划的只读副本，保护内部链表；目录中的计划内食谱不能被删除。
+- 新增 15 项链表、栈与组件交互测试，连同原有历史示例测试，累计 43 项阶段测试通过。
+
+指令队列的方法暂保留起始占位实现，原有的队列示例测试将在相应功能完成后通过。
 
 ## 实际开发安排
 
@@ -54,10 +63,10 @@ dotnet test
 dotnet run --project RecipeManagement.Application -- data/recipes.json
 ```
 
-当前仅验证目录与购物清单阶段：
+当前验证目录、购物清单、烹饪计划与移除历史阶段：
 
 ```powershell
-dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder&FullyQualifiedName!~RemovedRecipesAreRestoredLastInFirstOut"
+dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder"
 ```
 
 

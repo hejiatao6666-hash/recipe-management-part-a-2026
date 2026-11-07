@@ -65,20 +65,36 @@ public sealed class RecipeManager : IRecipeManager
     public void ClearShoppingList() =>
         _shoppingList.Clear();
 
-    public bool AddRecipeToCookingPlan(int recipeId) =>
-        throw new NotImplementedException("Part A: implement AddRecipeToCookingPlan.");
+    public bool AddRecipeToCookingPlan(int recipeId)
+    {
+        if (!_recipes.ContainsKey(recipeId) || _cookingPlan.Contains(recipeId))
+        {
+            return false;
+        }
 
-    public bool RemoveRecipeFromCookingPlan(int recipeId) =>
-        throw new NotImplementedException("Part A: implement RemoveRecipeFromCookingPlan.");
+        _cookingPlan.AddLast(recipeId);
+        return true;
+    }
+
+    public bool RemoveRecipeFromCookingPlan(int recipeId)
+    {
+        if (!_cookingPlan.Remove(recipeId))
+        {
+            return false;
+        }
+
+        _removedRecipes.Push(recipeId);
+        return true;
+    }
 
     public bool RestoreLastRemovedRecipe() =>
-        throw new NotImplementedException("Part A: implement RestoreLastRemovedRecipe.");
+        _removedRecipes.TryPop(out int recipeId) && AddRecipeToCookingPlan(recipeId);
 
     public int? PeekLastRemovedRecipe() =>
-        throw new NotImplementedException("Part A: implement PeekLastRemovedRecipe.");
+        _removedRecipes.TryPeek(out int recipeId) ? recipeId : null;
 
     public IReadOnlyList<int> GetCookingPlan() =>
-        throw new NotImplementedException("Part A: implement GetCookingPlan.");
+        new List<int>(_cookingPlan).AsReadOnly();
 
     public bool StartCooking(int recipeId) =>
         throw new NotImplementedException("Part A: implement StartCooking.");

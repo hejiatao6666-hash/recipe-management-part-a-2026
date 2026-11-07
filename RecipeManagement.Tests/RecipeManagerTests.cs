@@ -234,6 +234,212 @@ public sealed class RecipeManagerTests
     }
 
     [Fact]
+    public void GetCookingPlan_IsInitiallyEmpty()
+    {
+        var manager = CreateManager();
+
+        Assert.Empty(manager.GetCookingPlan());
+        Assert.Equal(0, manager.CookingPlanCount);
+    }
+
+    [Fact]
+    public void AddRecipeToCookingPlan_AppendsExistingRecipesInOrder()
+    {
+        IRecipeManager manager = CreateManager();
+        manager.AddRecipe(new Recipe { Id = 30, Title = "Recipe C" });
+
+        Assert.True(manager.AddRecipeToCookingPlan(20));
+        Assert.True(manager.AddRecipeToCookingPlan(10));
+        Assert.True(manager.AddRecipeToCookingPlan(30));
+
+        Assert.Equal(new[] { 20, 10, 30 }, manager.GetCookingPlan());
+        Assert.Equal(3, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(999)]
+    public void AddRecipeToCookingPlan_RejectsDuplicateOrMissingRecipe(int recipeId)
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+
+        Assert.False(manager.AddRecipeToCookingPlan(recipeId));
+
+        Assert.Equal(new[] { 10 }, manager.GetCookingPlan());
+        Assert.Equal(1, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(20)]
+    [InlineData(30)]
+    public void RemoveRecipeFromCookingPlan_RemovesMatchingIdAndRecordsHistory(int recipeId)
+    {
+        var manager = CreateManager();
+        manager.AddRecipe(new Recipe { Id = 30, Title = "Recipe C" });
+        manager.AddRecipeToCookingPlan(10);
+        manager.AddRecipeToCookingPlan(20);
+        manager.AddRecipeToCookingPlan(30);
+        var expectedPlan = new List<int> { 10, 20, 30 };
+        expectedPlan.Remove(recipeId);
+
+        Assert.True(manager.RemoveRecipeFromCookingPlan(recipeId));
+
+        Assert.Equal(expectedPlan, manager.GetCookingPlan());
+        Assert.Equal(2, manager.CookingPlanCount);
+        Assert.Equal(recipeId, manager.PeekLastRemovedRecipe());
+        Assert.Equal(1, manager.RemovedRecipeCount);
+        Assert.NotNull(manager.FindRecipe(recipeId));
+    }
+
+    [Fact]
+    public void RemoveRecipeFromCookingPlan_UnplannedIdDoesNotChangeHistory()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+        manager.AddRecipeToCookingPlan(20);
+        manager.RemoveRecipeFromCookingPlan(10);
+
+        Assert.False(manager.RemoveRecipeFromCookingPlan(10));
+        Assert.False(manager.RemoveRecipeFromCookingPlan(999));
+
+        Assert.Equal(new[] { 20 }, manager.GetCookingPlan());
+        Assert.Equal(1, manager.CookingPlanCount);
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+        Assert.Equal(1, manager.RemovedRecipeCount);
+    }
+
+    [Fact]
+    public void GetCookingPlan_PreventsMutationOfInternalPlan()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+        var returnedPlan = Assert.IsAssignableFrom<IList<int>>(manager.GetCookingPlan());
+
+        Assert.True(returnedPlan.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => returnedPlan[0] = 20);
+        Assert.Throws<NotSupportedException>(() => returnedPlan.Add(20));
+        Assert.Throws<NotSupportedException>(() => returnedPlan.Clear());
+        Assert.Equal(new[] { 10 }, manager.GetCookingPlan());
+        Assert.Equal(1, manager.CookingPlanCount);
+    }
+
+    [Fact]
+    public void RemoveRecipe_RejectsCookingPlanRecipeUntilItIsUnplanned()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+
+        Assert.False(manager.RemoveRecipe(10));
+        Assert.NotNull(manager.FindRecipe(10));
+        Assert.Equal(2, manager.RecipeCount);
+        Assert.Equal(new[] { 10 }, manager.GetCookingPlan());
+
+        Assert.True(manager.RemoveRecipeFromCookingPlan(10));
+        Assert.True(manager.RemoveRecipe(10));
+        Assert.Null(manager.FindRecipe(10));
+        Assert.Equal(1, manager.RecipeCount);
+        Assert.Empty(manager.GetCookingPlan());
+    }
+
+    [Fact]
+    public void RemovedHistory_HandlesEmptyPeekAndRestore()
+    {
+        var manager = CreateManager();
+
+        Assert.Null(manager.PeekLastRemovedRecipe());
+        Assert.False(manager.RestoreLastRemovedRecipe());
+        Assert.Null(manager.PeekLastRemovedRecipe());
+        Assert.Equal(0, manager.RemovedRecipeCount);
+        Assert.Equal(0, manager.CookingPlanCount);
+    }
+
+    [Fact]
+    public void PeekLastRemovedRecipe_DoesNotPopHistory()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+        manager.RemoveRecipeFromCookingPlan(10);
+
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+        Assert.Equal(1, manager.RemovedRecipeCount);
+        Assert.Empty(manager.GetCookingPlan());
+    }
+
+    [Fact]
+    public void RestoreLastRemovedRecipe_AppendsInLastInFirstOutOrder()
+    {
+        var manager = CreateManager();
+        manager.AddRecipe(new Recipe { Id = 30, Title = "Recipe C" });
+        manager.AddRecipeToCookingPlan(10);
+        manager.AddRecipeToCookingPlan(20);
+        manager.AddRecipeToCookingPlan(30);
+        manager.RemoveRecipeFromCookingPlan(10);
+        manager.RemoveRecipeFromCookingPlan(20);
+
+        Assert.True(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 30, 20 }, manager.GetCookingPlan());
+        Assert.Equal(2, manager.CookingPlanCount);
+        Assert.Equal(1, manager.RemovedRecipeCount);
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+
+        Assert.True(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 30, 20, 10 }, manager.GetCookingPlan());
+        Assert.Equal(3, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+        Assert.Null(manager.PeekLastRemovedRecipe());
+        Assert.False(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 30, 20, 10 }, manager.GetCookingPlan());
+    }
+
+    [Fact]
+    public void RestoreLastRemovedRecipe_ConsumesMissingRecipeWithoutSkippingOlderHistory()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+        manager.AddRecipeToCookingPlan(20);
+        manager.RemoveRecipeFromCookingPlan(10);
+        manager.RemoveRecipeFromCookingPlan(20);
+        Assert.True(manager.RemoveRecipe(20));
+
+        Assert.False(manager.RestoreLastRemovedRecipe());
+        Assert.Empty(manager.GetCookingPlan());
+        Assert.Equal(0, manager.CookingPlanCount);
+        Assert.Equal(1, manager.RemovedRecipeCount);
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+
+        Assert.True(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 10 }, manager.GetCookingPlan());
+        Assert.Equal(0, manager.RemovedRecipeCount);
+    }
+
+    [Fact]
+    public void RestoreLastRemovedRecipe_ConsumesAlreadyPlannedRecipeWithoutAddingDuplicate()
+    {
+        var manager = CreateManager();
+        manager.AddRecipeToCookingPlan(10);
+        manager.AddRecipeToCookingPlan(20);
+        manager.RemoveRecipeFromCookingPlan(10);
+        manager.RemoveRecipeFromCookingPlan(20);
+        manager.AddRecipeToCookingPlan(20);
+
+        Assert.False(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 20 }, manager.GetCookingPlan());
+        Assert.Equal(1, manager.CookingPlanCount);
+        Assert.Equal(1, manager.RemovedRecipeCount);
+        Assert.Equal(10, manager.PeekLastRemovedRecipe());
+
+        Assert.True(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 20, 10 }, manager.GetCookingPlan());
+        Assert.Equal(2, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+    }
+
+    [Fact]
     public void InstructionsAreCompletedInFileOrder()
     {
         var manager = CreateManager();
