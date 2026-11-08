@@ -32,7 +32,15 @@
 - 返回计划的只读副本，保护内部链表；目录中的计划内食谱不能被删除。
 - 新增 15 项链表、栈与组件交互测试，连同原有历史示例测试，累计 43 项阶段测试通过。
 
-指令队列的方法暂保留起始占位实现，原有的队列示例测试将在相应功能完成后通过。
+2026 年 11 月 8 日完成指令队列与综合验证：
+
+- 使用 `Queue<string>` 按原始顺序加载指令，查看不移除，完成时只移除队首一条指令。
+- 空队列返回 `null`；启动有效会话替换旧指令，失败的启动请求保留当前会话。
+- 新增 12 项队列与完整流程测试，连同原有队列示例测试，全量 56 项测试通过。
+- 完整流程测试覆盖目录、购物清单、计划、移除历史和指令队列的交互。
+- 三项目编译通过，零警告、零错误；控制台加载 670 条食谱，购物清单、计划恢复和指令处理流程检查通过。
+
+Part A 的全部要求已实现。Part B 方法保留起始占位实现，`Design.md` 是后续 Part B 的模板。
 
 ## 实际开发安排
 
@@ -48,7 +56,7 @@
 ## 项目结构
 
 - `RecipeManagement.Application`：引用 Core。
-- `RecipeManagement.Core`：模型、加载器、接口以及待完成的 `RecipeManager`。
+- `RecipeManagement.Core`：模型、加载器、接口以及 `RecipeManager` 的 Part A 实现。
 - `RecipeManagement.Tests`：引用 Core 的 xUnit 测试。
 - `data/recipes.json`：食谱数据。
 - `Design.md`： Part B 模板。
@@ -63,19 +71,28 @@ dotnet test
 dotnet run --project RecipeManagement.Application -- data/recipes.json
 ```
 
-当前验证目录、购物清单、烹饪计划与移除历史阶段：
-
-```powershell
-dotnet test --filter "FullyQualifiedName!~InstructionsAreCompletedInFileOrder"
-```
-
-
-
 若 Windows 的默认 `dotnet` 提示没有 SDK，而 SDK 安装在用户目录，可使用：
 
 ```powershell
 & "$env:USERPROFILE\.dotnet\dotnet.exe" build
 ```
 
+若本机受限终端运行测试时，测试宿主监控父进程提示访问被拒绝，可临时使用以下命令。此参数只用于本机运行环境，不筛选或跳过测试：
+
+```powershell
+dotnet test -p:_MSTestEnableParentProcessQuery=false
+```
+
 `bin`、`obj`、测试结果和 IDE 临时文件不纳入 Git。
+
+## 提交版本与 Git 记录
+
+最终提交版本使用 `part-a-final` 标签标识，仓库保留 2026 年 11 月 5 日至 8 日的实际开发提交。解压提交 ZIP 后，在项目根目录执行：
+
+```powershell
+git log --oneline --date=iso-strict --format="%h %ad %s"
+git show part-a-final --stat
+```
+
+ZIP 包含隐藏的 `.git` 文件夹及源码、项目文件、测试和数据，不包含 `bin`、`obj`。GitHub 上的提交记录也可通过仓库首页的 Commits 入口查看。
 

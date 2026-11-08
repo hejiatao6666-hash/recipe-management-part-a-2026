@@ -440,6 +440,183 @@ public sealed class RecipeManagerTests
     }
 
     [Fact]
+    public void InstructionQueue_HandlesEmptyPeekAndCompletion()
+    {
+        var manager = CreateManager();
+
+        Assert.Null(manager.PeekNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+    }
+
+    [Theory]
+    [InlineData(20)]
+    [InlineData(999)]
+    public void StartCooking_RejectsMissingRecipeOrRecipeWithoutInstructions(int recipeId)
+    {
+        var manager = CreateManager();
+
+        Assert.False(manager.StartCooking(recipeId));
+        Assert.Equal(0, manager.PendingInstructionCount);
+        Assert.Null(manager.PeekNextInstruction());
+    }
+
+    [Fact]
+    public void StartCooking_PreservesOriginalInstructionStringsAndOrder()
+    {
+        var recipe = new Recipe
+        {
+            Id = 30,
+            Title = "Cooking recipe",
+            Instructions = new() { "  First step  ", "Repeated step", "Repeated step" }
+        };
+        IRecipeManager manager = new RecipeManager(new[] { recipe });
+
+        Assert.True(manager.StartCooking(30));
+        Assert.Equal(3, manager.PendingInstructionCount);
+        Assert.Equal("  First step  ", manager.CompleteNextInstruction());
+        Assert.Equal("Repeated step", manager.CompleteNextInstruction());
+        Assert.Equal("Repeated step", manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+        Assert.Equal(new[] { "  First step  ", "Repeated step", "Repeated step" }, recipe.Instructions);
+    }
+
+    [Fact]
+    public void PeekNextInstruction_DoesNotRemoveInstruction()
+    {
+        var manager = CreateManager();
+        manager.StartCooking(10);
+
+        Assert.Equal("First step", manager.PeekNextInstruction());
+        Assert.Equal("First step", manager.PeekNextInstruction());
+        Assert.Equal(2, manager.PendingInstructionCount);
+    }
+
+    [Fact]
+    public void CompleteNextInstruction_RemovesOneInstructionAtATime()
+    {
+        var manager = CreateManager();
+        manager.StartCooking(10);
+
+        Assert.Equal("First step", manager.CompleteNextInstruction());
+        Assert.Equal(1, manager.PendingInstructionCount);
+        Assert.Equal("Second step", manager.PeekNextInstruction());
+        Assert.Equal("Second step", manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+        Assert.Null(manager.PeekNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+    }
+
+    [Fact]
+    public void StartCooking_ReplacesPreviousSessionInstructions()
+    {
+        var manager = CreateManager();
+        manager.AddRecipe(new Recipe
+        {
+            Id = 30,
+            Title = "New cooking session",
+            Instructions = new() { "New first step", "New second step", "New third step" }
+        });
+        manager.StartCooking(10);
+        manager.CompleteNextInstruction();
+
+        Assert.True(manager.StartCooking(30));
+        Assert.Equal(3, manager.PendingInstructionCount);
+        Assert.Equal("New first step", manager.CompleteNextInstruction());
+        Assert.Equal("New second step", manager.CompleteNextInstruction());
+        Assert.Equal("New third step", manager.CompleteNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+    }
+
+    [Theory]
+    [InlineData(20)]
+    [InlineData(999)]
+    public void StartCooking_InvalidRecipePreservesCurrentSession(int recipeId)
+    {
+        var manager = CreateManager();
+        manager.StartCooking(10);
+        manager.CompleteNextInstruction();
+
+        Assert.False(manager.StartCooking(recipeId));
+        Assert.Equal(1, manager.PendingInstructionCount);
+        Assert.Equal("Second step", manager.PeekNextInstruction());
+        Assert.Equal("Second step", manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+    }
+
+    [Fact]
+    public void StartCooking_RestartsSameRecipeFromFirstInstruction()
+    {
+        var manager = CreateManager();
+        manager.StartCooking(10);
+        manager.CompleteNextInstruction();
+
+        Assert.True(manager.StartCooking(10));
+        Assert.Equal(2, manager.PendingInstructionCount);
+        Assert.Equal("First step", manager.PeekNextInstruction());
+    }
+
+    [Fact]
+    public void StartCooking_CopiesInstructionsIndependentlyOfRecipeList()
+    {
+        var manager = CreateManager();
+        manager.StartCooking(10);
+
+        manager.FindRecipe(10)!.Instructions.Clear();
+
+        Assert.Equal(2, manager.PendingInstructionCount);
+        Assert.Equal("First step", manager.CompleteNextInstruction());
+        Assert.Equal("Second step", manager.CompleteNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+    }
+
+    [Fact]
+    public void RecipeWorkflow_CombinesCatalogueShoppingPlanHistoryAndInstructions()
+    {
+        IRecipeManager manager = new RecipeManager(Array.Empty<Recipe>());
+        var recipe = new Recipe
+        {
+            Id = 30,
+            Title = "Complete workflow recipe",
+            Ingredients = new() { "1 apple", "2 eggs" },
+            Instructions = new() { "Prepare ingredients", "Cook and serve" }
+        };
+
+        Assert.True(manager.AddRecipe(recipe));
+        Assert.Same(recipe, manager.FindRecipe(30));
+        Assert.Equal(2, manager.AddIngredientsToShoppingList(30));
+        Assert.True(manager.AddRecipeToCookingPlan(30));
+        Assert.False(manager.RemoveRecipe(30));
+        Assert.True(manager.RemoveRecipeFromCookingPlan(30));
+        Assert.Equal(30, manager.PeekLastRemovedRecipe());
+        Assert.True(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(new[] { 30 }, manager.GetCookingPlan());
+        Assert.Equal(0, manager.RemovedRecipeCount);
+
+        Assert.True(manager.StartCooking(30));
+        Assert.Equal(2, manager.PendingInstructionCount);
+        Assert.Equal("Prepare ingredients", manager.PeekNextInstruction());
+        Assert.Equal("Prepare ingredients", manager.CompleteNextInstruction());
+        Assert.Equal("Cook and serve", manager.CompleteNextInstruction());
+        Assert.Null(manager.CompleteNextInstruction());
+        Assert.Equal(0, manager.PendingInstructionCount);
+        Assert.Equal(new[] { 30 }, manager.GetCookingPlan());
+
+        Assert.True(manager.RemoveRecipeFromCookingPlan(30));
+        Assert.True(manager.RemoveRecipe(30));
+        Assert.False(manager.RestoreLastRemovedRecipe());
+        Assert.Equal(0, manager.RecipeCount);
+        Assert.Equal(0, manager.CookingPlanCount);
+        Assert.Equal(0, manager.RemovedRecipeCount);
+        Assert.Equal(new[] { "1 apple", "2 eggs" }, manager.GetShoppingList());
+        manager.ClearShoppingList();
+        Assert.Equal(0, manager.ShoppingItemCount);
+    }
+
+    [Fact]
     public void InstructionsAreCompletedInFileOrder()
     {
         var manager = CreateManager();
