@@ -19,7 +19,7 @@ public sealed class RecipeManager : IRecipeManager
         {
             if (recipe is null || !AddRecipe(recipe))
             {
-                throw new ArgumentException("食谱必须具有唯一的正数 ID 和非空标题。", nameof(recipes));
+                throw new ArgumentException("Recipes must have unique positive IDs and non-blank titles.", nameof(recipes));
             }
         }
     }
